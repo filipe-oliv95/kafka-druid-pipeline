@@ -109,7 +109,7 @@ docker compose up -d
 Acesse o container PostgreSQL e crie a tabela de exemplo:
 
 ```bash
-docker exec -it postgres psql -U myuser -d mydb
+docker exec -it postgres psql -U druid -d druid
 
 CREATE TABLE products (
   id SERIAL PRIMARY KEY,
@@ -132,9 +132,9 @@ curl -X POST http://localhost:8085/connectors \
       "plugin.name": "pgoutput",
       "database.hostname": "postgres",
       "database.port": "5432",
-      "database.user": "myuser",
+      "database.user": "druid",
       "database.password": "FoolishPassword",
-      "database.dbname": "mydb",
+      "database.dbname": "druid",
       "database.server.name": "druidserver",
       "table.include.list": "public.products",
       "slot.name": "products_slot",
@@ -169,7 +169,7 @@ kafka-topics --bootstrap-server localhost:9092 --list
 #### Inserção de Dados no PostgreSQL
 
 ```bash
-docker exec -it postgres psql -U myuser -d mydb
+docker exec -it postgres psql -U druid -d druid
 
 INSERT INTO products (name, price) VALUES
 ('Terno', 500.00);

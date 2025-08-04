@@ -19,8 +19,8 @@ services:
       - metadata_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_PASSWORD=FoolishPassword
-      - POSTGRES_USER=myuser
-      - POSTGRES_DB=mydb
+      - POSTGRES_USER=druid
+      - POSTGRES_DB=druid
     command: >
       postgres
       -c wal_level=logical
