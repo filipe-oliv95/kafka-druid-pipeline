@@ -8,6 +8,7 @@ volumes:
   coordinator_var: {}
   router_var: {}
   druid_shared: {}
+  ranger_db_data: {}
 
 services:
   postgres:
@@ -161,3 +162,41 @@ services:
       - router
     env_file:
       - environment
+
+  ranger-db:
+    image: postgres:15
+    container_name: ranger-db
+    environment:
+      - POSTGRES_PASSWORD=rangeradmin
+      - POSTGRES_USER=rangeradmin
+      # - POSTGRES_DB=ranger
+    ports:
+      - "5433:5432"
+    volumes:
+      - ranger_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rangeradmin -d ranger"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Garante que o PostgreSQL inicie corretamente antes de aceitar conexões
+    command: >
+      postgres
+      -c max_connections=100
+      -c shared_buffers=128MB
+      -c logging_collector=on
+
+  ranger:
+    image: apache/ranger:2.4.0
+    user: root
+    container_name: ranger
+    depends_on:
+      ranger-db:
+        condition: service_healthy
+    ports:
+      - "6080:6080"  # Ranger Admin UI
+    environment:
+      - RANGER_ADMIN_PASSWORD=rangeradmin
+    volumes:
+      - ./ranger/install.properties:/etc/ranger/install.properties
+    command: /etc/ranger/install.sh
