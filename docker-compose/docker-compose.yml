@@ -1,33 +1,69 @@
-version: "2.2"
-
-volumes:
-  metadata_data: {}
-  middle_var: {}
-  historical_var: {}
-  broker_var: {}
-  coordinator_var: {}
-  router_var: {}
-  druid_shared: {}
+version: '3.7'
 
 services:
+  rangerdb:
+    container_name: rangerdb
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      PGDATA: /data/postgres
+    volumes:
+      - rangerdb:/data/postgres
+      - ./postresql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"  # acesso externo padrão
+    restart: unless-stopped
+    networks:
+      - ranger-env
+
   postgres:
     container_name: postgres
     image: postgres:15
-    ports:
-      - "5432:5432"
+    environment:
+      POSTGRES_USER: druid
+      POSTGRES_PASSWORD: FoolishPassword
+      POSTGRES_DB: druid
     volumes:
       - metadata_data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_PASSWORD=FoolishPassword
-      - POSTGRES_USER=druid
-      - POSTGRES_DB=druid
+    ports:
+      - "5433:5432"  # acessível externamente na 5433, mas o container escuta na 5432
     command: >
       postgres
       -c wal_level=logical
       -c max_replication_slots=10
       -c max_wal_senders=10
+    networks:
+      - ranger-env
 
-  # Need 3.5 or later for container nodes
+  ranger-admin:
+    image: armadik/ranger-admin:2.4.0
+    container_name: ranger-admin
+    hostname: ranger
+    command: ["./bootstrap.sh"]
+    depends_on:
+      - rangerdb
+    volumes:
+      - ./ranger-admin/install.properties:/opt/ranger-admin/install.properties
+    ports:
+      - "6080:6080"
+    restart: always
+    networks:
+      - ranger-env
+
+  ranger-usersync:
+    image: armadik/ranger-usersync:2.4.0
+    container_name: ranger-usersync
+    hostname: usersync
+    depends_on:
+      - ranger-admin
+    volumes:
+      - ./ranger-usersync/install.properties:/opt/ranger_usersync/install.properties
+    command: ["./bootstrap.sh"]
+    restart: always
+    networks:
+      - ranger-env
+
   zookeeper:
     image: confluentinc/cp-zookeeper:6.1.1
     container_name: zookeeper
@@ -37,6 +73,8 @@ services:
       ZOO_MY_ID: 1
     ports:
       - "2181:2181"
+    networks:
+      - ranger-env
 
   kafka:
     image: confluentinc/cp-kafka:6.1.1
@@ -53,6 +91,8 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_EXT:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - ranger-env
 
   debezium:
     image: debezium/connect:2.7.0.Final
@@ -78,6 +118,8 @@ services:
       POSTGRES_DB: druid
       POSTGRES_HOST_AUTH_METHOD: trust
       POSTGRES_INITDB_ARGS: --wal-level=logical
+    networks:
+      - ranger-env
 
   coordinator:
     image: apache/druid:30.0.0
@@ -90,10 +132,11 @@ services:
       - postgres
     ports:
       - "8081:8081"
-    command:
-      - coordinator
+    command: ["coordinator"]
     env_file:
       - environment
+    networks:
+      - ranger-env
 
   broker:
     image: apache/druid:30.0.0
@@ -106,10 +149,11 @@ services:
       - coordinator
     ports:
       - "8082:8082"
-    command:
-      - broker
+    command: ["broker"]
     env_file:
       - environment
+    networks:
+      - ranger-env
 
   historical:
     image: apache/druid:30.0.0
@@ -117,16 +161,17 @@ services:
     volumes:
       - druid_shared:/opt/shared
       - historical_var:/opt/druid/var
-    depends_on: 
+    depends_on:
       - zookeeper
       - postgres
       - coordinator
     ports:
       - "8083:8083"
-    command:
-      - historical
+    command: ["historical"]
     env_file:
       - environment
+    networks:
+      - ranger-env
 
   middlemanager:
     image: apache/druid:30.0.0
@@ -134,17 +179,18 @@ services:
     volumes:
       - druid_shared:/opt/shared
       - middle_var:/opt/druid/var
-    depends_on: 
+    depends_on:
       - zookeeper
       - postgres
       - coordinator
     ports:
       - "8091:8091"
       - "8100-8105:8100-8105"
-    command:
-      - middleManager
+    command: ["middleManager"]
     env_file:
       - environment
+    networks:
+      - ranger-env
 
   router:
     image: apache/druid:30.0.0
@@ -157,7 +203,25 @@ services:
       - coordinator
     ports:
       - "8888:8888"
-    command:
-      - router
+    command: ["router"]
     env_file:
       - environment
+    networks:
+      - ranger-env
+
+volumes:
+  rangerdb:
+    driver: local
+  es_data:
+    driver: local
+  metadata_data: {}
+  middle_var: {}
+  historical_var: {}
+  broker_var: {}
+  coordinator_var: {}
+  router_var: {}
+  druid_shared: {}
+
+networks:
+  ranger-env:
+    external: true
