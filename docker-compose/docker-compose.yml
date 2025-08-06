@@ -1,55 +1,41 @@
-version: '3.7'
-
 services:
-  rangerdb:
-    container_name: rangerdb
-    image: postgres:15
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
-      PGDATA: /data/postgres
-    volumes:
-      - rangerdb:/data/postgres
-      - ./postresql/init.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - "5432:5432"  # acesso externo padrão
-    restart: unless-stopped
-    networks:
-      - ranger-env
-
+  
   postgres:
     container_name: postgres
     image: postgres:15
     environment:
       POSTGRES_USER: druid
       POSTGRES_PASSWORD: FoolishPassword
-      POSTGRES_DB: druid
-    volumes:
-      - metadata_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432"  # acessível externamente na 5433, mas o container escuta na 5432
+      - "5432:5432"
     command: >
       postgres
       -c wal_level=logical
       -c max_replication_slots=10
       -c max_wal_senders=10
+    volumes:
+      - metadata_data:/var/lib/postgresql/data
+      - ./postgres/init-multi.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - ranger-env
+
 
   ranger-admin:
     image: armadik/ranger-admin:2.4.0
     container_name: ranger-admin
     hostname: ranger
-    command: ["./bootstrap.sh"]
+    command: ["sh", "-c", "chmod +x /wait-for-postgres.sh && /wait-for-postgres.sh postgres 5432 druid FoolishPassword -- ./bootstrap.sh"]
     depends_on:
-      - rangerdb
+      - postgres
     volumes:
       - ./ranger-admin/install.properties:/opt/ranger-admin/install.properties
+      - ./wait-for-postgres.sh:/wait-for-postgres.sh
     ports:
       - "6080:6080"
     restart: always
     networks:
       - ranger-env
+      
 
   ranger-usersync:
     image: armadik/ranger-usersync:2.4.0
@@ -59,7 +45,7 @@ services:
       - ranger-admin
     volumes:
       - ./ranger-usersync/install.properties:/opt/ranger_usersync/install.properties
-    command: ["./bootstrap.sh"]
+    command: ["sh", "-c", "until PGPASSWORD=FoolishPassword psql -h postgres -U druid -c 'SELECT 1'; do sleep 2; done && ./bootstrap.sh"]
     restart: always
     networks:
       - ranger-env
@@ -210,7 +196,7 @@ services:
       - ranger-env
 
 volumes:
-  rangerdb:
+  postgres:
     driver: local
   es_data:
     driver: local
