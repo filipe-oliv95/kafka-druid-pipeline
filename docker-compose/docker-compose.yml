@@ -30,6 +30,7 @@ services:
     volumes:
       - ./ranger-admin/install.properties:/opt/ranger-admin/install.properties
       - ./wait-for-postgres.sh:/wait-for-postgres.sh
+      - ./ranger-druid-plugin.jar:/opt/ranger-admin/ews/webapp/WEB-INF/classes/ranger-plugins/ranger-druid-plugin-2.4.0.jar
     ports:
       - "6080:6080"
     restart: always
@@ -108,11 +109,26 @@ services:
       - ranger-env
 
   coordinator:
-    image: apache/druid:30.0.0
+    build:
+      context: ./
+    image: druid-custom:latest
     container_name: coordinator
     volumes:
       - druid_shared:/opt/shared
       - coordinator_var:/opt/druid/var
+    environment:
+      - DRUID_EXTRA_JVM_OPTIONS=-Ddruid.extensions.directory=/opt/druid/extensions/ranger-druid -cp /opt/druid/hadoop-dependencies/*:/opt/druid/extensions/ranger-druid/*
+      - DRUID_EXTRA_CLASSPATH=/opt/druid/hadoop-dependencies/*
+      - druid_extensions_loadList=["druid-histogram", "druid-datasketches", "druid-lookups-cached-global", "postgresql-metadata-storage", "druid-multi-stage-query", "druid-kafka-indexing-service","ranger-druid"]
+      - druid.auth.authenticatorChain=["ranger"]
+      - druid.auth.authorizers=["ranger"]
+      - druid.auth.ranger.type=ranger
+      - druid.auth.ranger.ranger.use_ugi=false
+      - druid.auth.authentication.kerberos.enabled=false
+      - druid.auth.ranger.ranger.service=druid
+      - druid.auth.ranger.ranger.policy.rest.url=http://ranger-admin:6080
+      - druid.auth.ranger.ranger.policy.pollIntervalMs=30000
+
     depends_on:
       - zookeeper
       - postgres
@@ -123,12 +139,26 @@ services:
       - environment
     networks:
       - ranger-env
+    
 
   broker:
-    image: apache/druid:30.0.0
+    build:
+      context: ./
+    image: druid-custom:latest
     container_name: broker
     volumes:
       - broker_var:/opt/druid/var
+    environment:
+      - DRUID_EXTRA_JVM_OPTIONS=-Ddruid.extensions.directory=/opt/druid/extensions/ranger-druid
+      - DRUID_EXTRA_CLASSPATH=/opt/druid/extensions/ranger-druid/*:/opt/druid/extensions/ranger-druid/lib/*
+      - druid.extensions.loadList=["druid-histogram", "druid-datasketches", "druid-lookups-cached-global", "postgresql-metadata-storage", "druid-multi-stage-query", "druid-kafka-indexing-service","ranger-druid"]
+      - druid.auth.authenticatorChain=["ranger"]
+      - druid.auth.authorizers=["ranger"]
+      - druid.auth.ranger.type=ranger
+      - druid.auth.ranger.ranger.service=druid
+      - druid.auth.ranger.ranger.use_ugi=false
+      - druid.auth.ranger.ranger.policy.rest.url=http://ranger-admin:6080
+      - druid.auth.ranger.ranger.policy.pollIntervalMs=30000
     depends_on:
       - zookeeper
       - postgres
@@ -142,11 +172,24 @@ services:
       - ranger-env
 
   historical:
-    image: apache/druid:30.0.0
+    build:
+      context: ./
+    image: druid-custom:latest
     container_name: historical
     volumes:
       - druid_shared:/opt/shared
       - historical_var:/opt/druid/var
+    environment:
+      - DRUID_EXTRA_JVM_OPTIONS=-Ddruid.extensions.directory=/opt/druid/extensions/ranger-druid -cp /opt/druid/hadoop-dependencies/*:/opt/druid/extensions/ranger-druid/*
+      - DRUID_EXTRA_CLASSPATH=/opt/druid/hadoop-dependencies/*
+      - druid.extensions.loadList=["druid-histogram", "druid-datasketches", "druid-lookups-cached-global", "postgresql-metadata-storage", "druid-multi-stage-query", "druid-kafka-indexing-service","ranger-druid"]
+      - druid.auth.authenticatorChain=["ranger"]
+      - druid.auth.authorizers=["ranger"]
+      - druid.auth.ranger.type=ranger
+      - druid.auth.ranger.ranger.service=druid
+      - druid.auth.ranger.ranger.use_ugi=false
+      - druid.auth.ranger.ranger.policy.rest.url=http://ranger-admin:6080
+      - druid.auth.ranger.ranger.policy.pollIntervalMs=30000
     depends_on:
       - zookeeper
       - postgres
@@ -160,11 +203,25 @@ services:
       - ranger-env
 
   middlemanager:
-    image: apache/druid:30.0.0
+    build:
+      context: ./
+    image: druid-custom:latest
     container_name: middlemanager
     volumes:
       - druid_shared:/opt/shared
       - middle_var:/opt/druid/var
+    environment:
+      - DRUID_EXTRA_JVM_OPTIONS=-Ddruid.extensions.directory=/opt/druid/extensions/ranger-druid -cp /opt/druid/hadoop-dependencies/*:/opt/druid/extensions/ranger-druid/*
+      - DRUID_EXTRA_CLASSPATH=/opt/druid/hadoop-dependencies/*
+      - druid.extensions.loadList=["druid-histogram", "druid-datasketches", "druid-lookups-cached-global", "postgresql-metadata-storage", "druid-multi-stage-query", "druid-kafka-indexing-service","ranger-druid"]
+      - druid.auth.authenticatorChain=["ranger"]
+      - druid.auth.authorizers=["ranger"]
+      - druid.auth.ranger.type=ranger
+      - druid.auth.ranger.ranger.service=druid
+      - druid.auth.ranger.ranger.use_ugi=false
+      - druid.auth.authentication.kerberos.enabled=false
+      - druid.auth.ranger.ranger.policy.rest.url=http://ranger-admin:6080
+      - druid.auth.ranger.ranger.policy.pollIntervalMs=30000
     depends_on:
       - zookeeper
       - postgres
@@ -179,10 +236,23 @@ services:
       - ranger-env
 
   router:
-    image: apache/druid:30.0.0
+    build:
+      context: ./
+    image: druid-custom:latest
     container_name: router
     volumes:
       - router_var:/opt/druid/var
+    environment:
+      - DRUID_EXTRA_JVM_OPTIONS=-Ddruid.extensions.directory=/opt/druid/extensions/ranger-druid -cp /opt/druid/hadoop-dependencies/*:/opt/druid/extensions/ranger-druid/*
+      - DRUID_EXTRA_CLASSPATH=/opt/hadoop-dependencies/*
+      - druid.extensions.loadList=["druid-histogram", "druid-datasketches", "druid-lookups-cached-global", "postgresql-metadata-storage", "druid-multi-stage-query", "druid-kafka-indexing-service","ranger-druid"]
+      - druid.auth.authenticatorChain=["ranger"]
+      - druid.auth.authorizers=["ranger"]
+      - druid.auth.ranger.type=ranger
+      - druid.auth.ranger.ranger.service=druid
+      - druid.auth.ranger.ranger.use_ugi=false
+      - druid.auth.ranger.ranger.policy.rest.url=http://ranger-admin:6080
+      - druid.auth.ranger.ranger.policy.pollIntervalMs=30000
     depends_on:
       - zookeeper
       - postgres
