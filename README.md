@@ -22,13 +22,16 @@
      * Inserção de Dados
      * Verificação do Tópico Kafka
      * Consumindo Tópicos no Druid
-6. [Conclusão](#conclusão)
+6. [Conclusão](#6-conclusão)
+6. [Referências](#7-referências)
 
 ---
 
 ## 1. Objetivo
 
 Criar um fluxo streaming iniciando no PostgreSQL, onde a inserção de dados em uma tabela será capturada pelo Debezium, enviada ao Kafka e consumida pelo Druid para visualização e análise.
+
+Como recurso adicional, foram incluídos o Apache Ranger (para controle de acesso e auditoria) e o Solr (como backend de auditoria).
 
 ---
 
@@ -39,6 +42,8 @@ Criar um fluxo streaming iniciando no PostgreSQL, onde a inserção de dados em 
 * **Kafka**: Sistema de mensageria distribuída que recebe os eventos do Debezium e os distribui para consumidores.
 * **Zookeeper**: Serviço de coordenação usado pelo Kafka para gerenciamento de metadados e orquestração dos brokers.
 * **Druid**: Plataforma analítica que consome os tópicos do Kafka e permite a visualização dos dados em tempo real através de dashboards.
+* **Apache Ranger**: Serviço centralizado de políticas de segurança e auditoria para componentes do ecossistema Hadoop, como Kafka e Druid.
+* **Apache Solr**: Armazenamento das auditorias geradas pelo Ranger.
 
 ---
 
@@ -64,6 +69,9 @@ Criar um fluxo streaming iniciando no PostgreSQL, onde a inserção de dados em 
 | Druid Historical    | 8083:8083                | 30.0.0 | Armazena dados segmentados.                                                                                                                       |
 | Druid MiddleManager | 8091:8091, 8100–8105     | 30.0.0 | Processa ingestões.                                                                                                                               |
 | Druid Router        | 8888:8888                | 30.0.0 | Interface web e roteamento de APIs.                                                                                                               |
+| Apache Ranger Admin | 6080:6080                | 2.4.0  | Interface de administração de políticas de segurança e auditoria.                                           |
+| Apache Ranger MySQL | 3306:3306                | 8.0.33 | Banco de dados para persistência de configurações do Ranger.                                               |
+| Apache Solr         | 8983:8983                | 8.11.2 | Backend para logs de auditoria do Ranger.                                                                  |
 
 ---
 
@@ -73,9 +81,10 @@ Criar um fluxo streaming iniciando no PostgreSQL, onde a inserção de dados em 
 **Confluentinc**: Distribuição da Confluent que integra Kafka e Zookeeper com ferramentas adicionais. A imagem `confluentinc/cp-kafka:6.1.1` **inclui Kafka 2.8.2 e Zookeeper 3.7.2**, de acordo com a [tabela de interoperabilidade da Confluent](https://docs.confluent.io/platform/6.1/installation/versions-interoperability.html#interoperability-versions).
 
 
-![Containers Docker](./assets/containers_docker.png)
-
-*Figura 1: Containers Docker rodando*
+<div align="center">
+  <img src="./assets/containers_docker.png" alt="Containers Docker" width="800"/>
+  <p><em>Figura 1: Containers Docker</em></p>
+</div>
 
 ---
 
@@ -162,9 +171,10 @@ docker exec -it kafka bash
 kafka-topics --bootstrap-server localhost:9092 --list
 ```
 
-![Topicos Kafka](./assets/topicos_kafka.png)
-
-*Figura 2: Tópicos Kafka padrão*
+<div align="center">
+  <img src="./assets/topicos_kafka.png" alt="Tópicos Kafka padrão" width="800"/>
+  <p><em>Figura 2: Tópicos Kafka padrão</em></p>
+</div>
 
 #### Inserção de Dados no PostgreSQL
 
@@ -182,10 +192,10 @@ docker exec -it kafka bash
 kafka-topics --bootstrap-server localhost:9092 --list
 ```
 
-![Topicos Kafka](./assets/topicos_kafka_2.png)
-
-*Figura 3: Novo tópico Kafka criado*
-
+<div align="center">
+  <img src="./assets/topicos_kafka_2.png" alt="Novo tópico Kafka criado" width="800"/>
+  <p><em>Figura 3: Novo tópico Kafka criado</em></p>
+</div>
 
 
 #### Consumindo Tópicos no Druid
@@ -213,8 +223,10 @@ kafka-topics --bootstrap-server localhost:9092 --list
 
    Após preencher, clique em **Apply**.
 
-   ![Tópicos Kafka na interface web](./assets/topicos_kafka_web.png)
-   *Figura 4: Configuração do tópico Kafka no Druid*
+   <div align="center">
+      <img src="./assets/topicos_kafka_web.png" alt="Configuração do tópico Kafka no Druid" width="800"/>
+      <p><em>Figura 4: Configuração do tópico Kafka no Druid</em></p>
+   </div>
 
 4. **Avance para o próximo passo**
 
@@ -261,10 +273,24 @@ kafka-topics --bootstrap-server localhost:9092 --list
     * Dê um nome à ingestão, como `kafka-products-ingestion`.
     * Revise todas as configurações.
     * Clique em **Submit** para iniciar o processo.
+---
+
+#### Interface Ranger
+
+Após subir os serviços, acesse a interface web do Apache Ranger: [http://localhost:6080/](http://localhost:6080/)
+```bash
+usuário: admin
+senha: Ranger1234
+```
+
+<div align="center">
+   <img src="./assets/ranger_interface.png" alt="Interface do Apache Ranger" width="800"/>
+   <p><em>Figura 5: Interface do Apache Ranger</em></p>
+</div>
 
 ---
 
-## Conclusão
+## 6. Conclusão
 
 Este projeto demonstrou, de forma prática, a construção de um fluxo de dados em tempo real utilizando tecnologias modernas de streaming:
 
@@ -277,12 +303,17 @@ A arquitetura implementada permite que qualquer alteração na base PostgreSQL s
 
 Com o ambiente todo orquestrado via Docker Compose, a replicação do laboratório em outras máquinas é simples, facilitando testes, aprendizado e expansão para projetos maiores.
 
+Para controle de segurança e auditoria centralizada, a stack inclui também o Apache Ranger e o Solr, oferecendo rastreabilidade das ações e políticas refinadas de acesso.
+
 ---
 
-## Referências
+## 7. Referências
 
  [Kafka Docker-Compose Reference - GitHub](https://github.com/adityajoshi12/kafka-nodejs)
 
  [Druid Docker-Compose Reference - GitHub](https://github.com/apache/druid/tree/33.0.0#)
 
+ [Ranger Docker-Compose Reference - GitHub](https://github.com/takezoe/ranger-docker/)
+
  [Druid Documentation](https://druid.apache.org/docs/latest/tutorials/docker)
+
