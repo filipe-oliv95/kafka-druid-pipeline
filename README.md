@@ -125,28 +125,29 @@ Execute o comando abaixo em um terminal Linux para criar o conector:
 curl -X POST http://localhost:8085/connectors \
   -H "Content-Type: application/json" \
   -d '{
-	  "name": "postgres-products-connector",
-	  "config": {
-	    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
-	    "plugin.name": "pgoutput",
-	    "database.hostname": "postgres",
-	    "database.port": "5432",
-	    "database.user": "druid",
-	    "database.password": "FoolishPassword",
-	    "database.dbname": "druid",
-	    "database.server.name": "druidserver",
-	    "table.include.list": "public.products",
-	    "slot.name": "products_slot",
-	    "publication.autocreate.mode": "filtered",
-	    "database.include.schema.changes": "false",
-	    "tombstones.on.delete": "false",
-	    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
-	    "key.converter.schemas.enable": "false",
-	    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
-	    "value.converter.schemas.enable": "false",
-	    "topic.prefix": "products"
-	  }
-	}'
+    "name": "postgres-products-connector",
+    "config": {
+      "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+      "plugin.name": "pgoutput",
+      "database.hostname": "postgres",
+      "database.port": "5432",
+      "database.user": "druid",
+      "database.password": "FoolishPassword",
+      "database.dbname": "druid",
+      "database.server.name": "druidserver",
+      "table.include.list": "public.products",
+      "slot.name": "products_slot",
+      "publication.autocreate.mode": "filtered",
+      "database.include.schema.changes": "false",
+      "tombstones.on.delete": "false",
+      "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+      "key.converter.schemas.enable": "false",
+      "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+      "value.converter.schemas.enable": "false",
+      "topic.prefix": "products",
+      "decimal.handling.mode": "double"
+    }
+  }'
 ```
 
 > Obs: para excluir o conector:
@@ -238,11 +239,8 @@ kafka-topics --bootstrap-server localhost:9092 --list
       |-----------|------------------|
       | id        | `$.after.id`     |
       | name      | `$.after.name`   |
-      | price_raw | `$.after.price.value` |
-      | scale     | `$.after.price.scale` |
+      | price     | `$.after.price`  |
       | ts_ms     | `$.ts_ms`        |
-
-      > 🔥 Importante: `price.value` vem em base64. No Druid, ele não decodifica isso automaticamente. Por enquanto vamos só ingestá-lo como `price_raw`. Você pode transformar depois com ETL, Kafka Streams ou Spark.
 
       Clique em **Apply** e depois em **Next: Parse time**.
 
@@ -272,7 +270,7 @@ kafka-topics --bootstrap-server localhost:9092 --list
       |-------------|--------|
       | id          | LONG   |
       | name        | STRING |
-      | price_raw   | STRING |
+      | price_raw   | DOUBLE |
       | scale       | LONG   |
       | ts_ms       | LONG   |
 
