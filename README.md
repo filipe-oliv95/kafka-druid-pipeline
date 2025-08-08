@@ -250,11 +250,18 @@ kafka-topics --bootstrap-server localhost:9092 --list
 
       - Selecione a coluna `ts_ms` e clique em **Next: Transform**
 
-7. **Transformações (opcional)**
+7. **Transformações**
 
-      Aqui é possível aplicar transformações nos dados antes da ingestão, como renomear colunas, aplicar filtros ou expressões.
+   Criaremos uma coluna do preço adicionando um imposto de 17% como exemplo.
 
-      - Se não for necessário transformar os dados neste momento, apenas clique em **Next: Filter**.
+   - Clique em **Add column transform** e defina:
+     - Nome da coluna: `price_with_tax`
+     - Type: `expression`
+     - Expression: `price * 1.17`
+   - Clique em **Apply** e depois em **Next: Transform**.
+
+   - Após criar a coluna transformada, clique em **Next: Filter**.
+
 
 8. **Filtros (opcional)**
 
@@ -266,13 +273,14 @@ kafka-topics --bootstrap-server localhost:9092 --list
 
       Clique em **Explicitly specify schema** e defina as seguintes configurações:
 
-      | Column Name | Type   |
-      |-------------|--------|
-      | id          | LONG   |
-      | name        | STRING |
-      | price_raw   | DOUBLE |
-      | scale       | LONG   |
-      | ts_ms       | LONG   |
+      | Column Name |     Type   |
+      |-------------|------------|
+      | id              | LONG   |
+      | name            | STRING |
+      | price           | DOUBLE |
+      | price_with_tax  | DOUBLE |
+      | scale           | LONG   |
+      | ts_ms           | LONG   |
 
       Após configurar, clique em **Next: Tune**.
 
