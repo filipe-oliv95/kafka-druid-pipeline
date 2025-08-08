@@ -7,23 +7,13 @@
 2. [Componentes](#2-componentes)
 3. [Infraestrutura Utilizada](#3-infraestrutura-utilizada)
 4. [Arquitetura Docker Compose](#4-arquitetura-docker-compose)
-
    * Tabela de Produtos, Portas, Versões e Observações
 5. [Guia de Uso Local](#5-guia-de-uso-local)
-
    * Pré-requisitos
    * Instalação
    * Teste do Laboratório
-
-     * Criação da Tabela
-     * Criação do Conector Debezium
-     * Exclusão do Conector
-     * Verificação de Tópicos Kafka
-     * Inserção de Dados
-     * Verificação do Tópico Kafka
-     * Consumindo Tópicos no Druid
 6. [Conclusão](#6-conclusão)
-6. [Referências](#7-referências)
+7. [Referências](#7-referências)
 
 ---
 
@@ -135,26 +125,28 @@ Execute o comando abaixo em um terminal Linux para criar o conector:
 curl -X POST http://localhost:8085/connectors \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "postgres-products-connector",
-    "config": {
-      "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
-      "plugin.name": "pgoutput",
-      "database.hostname": "postgres",
-      "database.port": "5432",
-      "database.user": "druid",
-      "database.password": "FoolishPassword",
-      "database.dbname": "druid",
-      "database.server.name": "druidserver",
-      "table.include.list": "public.products",
-      "slot.name": "products_slot",
-      "publication.autocreate.mode": "filtered",
-      "database.include.schema.changes": "false",
-      "tombstones.on.delete": "false",
-      "key.converter": "org.apache.kafka.connect.json.JsonConverter",
-      "value.converter": "org.apache.kafka.connect.json.JsonConverter",
-      "topic.prefix": "products"
-    }
-  }'
+	  "name": "postgres-products-connector",
+	  "config": {
+	    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+	    "plugin.name": "pgoutput",
+	    "database.hostname": "postgres",
+	    "database.port": "5432",
+	    "database.user": "druid",
+	    "database.password": "FoolishPassword",
+	    "database.dbname": "druid",
+	    "database.server.name": "druidserver",
+	    "table.include.list": "public.products",
+	    "slot.name": "products_slot",
+	    "publication.autocreate.mode": "filtered",
+	    "database.include.schema.changes": "false",
+	    "tombstones.on.delete": "false",
+	    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+	    "key.converter.schemas.enable": "false",
+	    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+	    "value.converter.schemas.enable": "false",
+	    "topic.prefix": "products"
+	  }
+	}'
 ```
 
 > Obs: para excluir o conector:
@@ -200,79 +192,119 @@ kafka-topics --bootstrap-server localhost:9092 --list
 
 #### Consumindo Tópicos no Druid
 
+# Consumindo Tópicos no Druid
+
 1. **Acesse a interface do Druid**
 
-   Abra o navegador e vá até o console do Druid:
-   [http://localhost:8888/](http://localhost:8888/)
+      Abra o navegador e vá até o console do Druid:  
+      [http://localhost:8888/](http://localhost:8888/)
 
 2. **Inicie o processo de ingestão de dados via Kafka**
 
-   No menu lateral, vá em:
-   **Load Data** → **Streaming** → **Kafka**
+      No menu lateral, vá em:  
+      **Load Data** → **Streaming** → **Kafka**
 
 3. **Configure a conexão com o Kafka**
 
-   Preencha os seguintes campos:
+      Preencha os seguintes campos:
 
-   * `Bootstrap servers`: `kafka:9092`
+      - `Bootstrap servers`: `kafka:9092`  
+      > Endereço do broker Kafka que o Druid irá se conectar.
 
-     > Endereço do broker Kafka que o Druid irá se conectar.
-   * `Topic`: `products.public.products`
+      - `Topic`: `products.public.products`  
+      > Nome do tópico Kafka que contém os dados a serem consumidos.
 
-     > Nome do tópico Kafka que contém os dados a serem consumidos.
+      Após preencher, clique em **Apply**.
 
-   Após preencher, clique em **Apply**.
-
-   <div align="center">
-      <img src="./assets/topicos_kafka_web.png" alt="Configuração do tópico Kafka no Druid" width="800"/>
-      <p><em>Figura 4: Configuração do tópico Kafka no Druid</em></p>
-   </div>
+      <div align="center">
+         <img src="./assets/topicos_kafka_web.png" alt="Configuração do tópico Kafka no Druid" width="800"/>
+         <p><em>Figura 4: Configuração do tópico Kafka no Druid</em></p>
+      </div>
 
 4. **Avance para o próximo passo**
 
-   Clique em **Next: Parse Data** para continuar com a definição do formato dos dados recebidos.
+      Clique em **Next: Parse Data** para continuar com a definição do formato dos dados recebidos.
 
-5. **Parse dos dados (definição do formato)**
+5. **Parse Data**
 
-   Nesta etapa, o Druid tentará detectar automaticamente o formato das mensagens do tópico Kafka. Caso os dados estejam em **JSON**, como é comum com eventos do Debezium, você verá uma prévia dos registros.
+      Os dados estão no formato Debezium Envelope. Você precisa flattenar os campos de `payload.after`.
 
-   * Confirme se os dados estão sendo reconhecidos corretamente.
-   * Caso necessário, ajuste manualmente o parser (por exemplo, definindo o formato como `json` ou `avro`, dependendo do seu caso).
-   * Clique em **Next: Transform**.
+      - **Data format:** json
+      - Clique em **Flatten JSON**
 
-6. **Transformações (opcional)**
+      No painel de "Parsed Fields", clique em **Add flatten field** e adicione os seguintes campos:
 
-   Aqui é possível aplicar transformações nos dados antes da ingestão, como renomear colunas, aplicar filtros ou expressões.
+      | Name      | JSONPath         |
+      |-----------|------------------|
+      | id        | `$.after.id`     |
+      | name      | `$.after.name`   |
+      | price_raw | `$.after.price.value` |
+      | scale     | `$.after.price.scale` |
+      | ts_ms     | `$.ts_ms`        |
 
-   * Se não for necessário transformar os dados neste momento, apenas clique em **Next: Filter**.
+      > 🔥 Importante: `price.value` vem em base64. No Druid, ele não decodifica isso automaticamente. Por enquanto vamos só ingestá-lo como `price_raw`. Você pode transformar depois com ETL, Kafka Streams ou Spark.
 
-7. **Filtros (opcional)**
+      Clique em **Apply** e depois em **Next: Parse time**.
 
-   Permite filtrar os dados que serão ingeridos, com base em condições nos campos.
+6. **Parse Time**
 
-   * Caso deseje ingerir todos os dados, clique diretamente em **Next: Configure schema**.
+      Você pode usar o timestamp do evento Debezium:
 
-8. **Configuração do schema**
+      - Selecione a coluna `ts_ms` e clique em **Next: Transform**
 
-   Nessa etapa, você define:
+7. **Transformações (opcional)**
 
-   * **Timestamp column**: o campo que será usado como referência temporal no Druid (por padrão, o Debezium envia um campo `ts_ms` com o timestamp da alteração).
+      Aqui é possível aplicar transformações nos dados antes da ingestão, como renomear colunas, aplicar filtros ou expressões.
 
-   * **Dimensions**: campos que serão usados como atributos categóricos (ex: `name`, `color`).
+      - Se não for necessário transformar os dados neste momento, apenas clique em **Next: Filter**.
 
-   * **Metrics**: campos numéricos para agregações (ex: `standardCost`, `listPrice`).
+8. **Filtros (opcional)**
 
-   Após configurar, clique em **Next: Tune**.
+      Permite filtrar os dados que serão ingeridos, com base em condições nos campos.
 
-9. **Tuning (opcional)**
+      - Caso deseje ingerir todos os dados, clique diretamente em **Next: Configure schema**.
 
-   Permite ajustes de performance e paralelismo da tarefa de ingestão. Se você não tiver necessidades específicas, pode deixar os valores padrão e clicar em **Next: Publish**.
+9. **Configure schema**
 
-10. **Publicação da Tarefa de Ingestão**
+      Clique em **Explicitly specify schema** e defina as seguintes configurações:
 
-    * Dê um nome à ingestão, como `kafka-products-ingestion`.
-    * Revise todas as configurações.
-    * Clique em **Submit** para iniciar o processo.
+      | Column Name | Type   |
+      |-------------|--------|
+      | id          | LONG   |
+      | name        | STRING |
+      | price_raw   | STRING |
+      | scale       | LONG   |
+      | ts_ms       | LONG   |
+
+      Após configurar, clique em **Next: Tune**.
+
+10. **Partition**
+
+      - Segment granularity: **hour**
+      - Query granularity: **none** ou **minute**
+      - Rollup: **false** (caso você queira armazenar todos os eventos exatamente como vieram)
+
+         Clique em **Next: Tune**.
+
+11. **Tune**
+
+      Deixe o padrão e clique em **Next: Publish**.
+
+12. **Publicação da Tarefa de Ingestão**
+
+      - Dê um nome à ingestão, como `products_stream`.
+      - Revise todas as configurações.
+      - Clique em **Submit** para iniciar o processo.
+
+13. **Acesso ao Datasource**
+
+      Após a publicação da tarefa de ingestão, o novo datasource estará disponível na aba **Datasources** da interface do Druid.
+
+      Você poderá:
+
+      - Visualizar os dados diretamente na interface do Druid.
+      - Utilizar a aba **Query** para executar comandos SQL.
+      - Acessar o datasource via API utilizando a [SQL API do Druid](https://druid.apache.org/docs/latest/api-reference/sql-api).
 ---
 
 #### Interface Ranger
@@ -317,3 +349,4 @@ Para controle de segurança e auditoria centralizada, a stack inclui também o A
 
  [Druid Documentation](https://druid.apache.org/docs/latest/tutorials/docker)
 
+ [SQL API do Druid](https://druid.apache.org/docs/latest/api-reference/sql-api).
