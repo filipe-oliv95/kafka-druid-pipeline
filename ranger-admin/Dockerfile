@@ -10,6 +10,12 @@ ADD https://ftp.unicamp.br/pub/apache/ranger/${RANGER_VERSION}/apache-ranger-${R
 
 COPY ranger-entrypoint.sh /opt
 
+# Copia o JAR do plugin não oficial para dentro do Ranger Admin
+COPY ranger-druid-plugin-2.4.0.jar ${RANGER_HOME}/ews/webapp/WEB-INF/classes/ranger-plugins/druid/
+
+COPY ranger-druid-plugin-2.4.0.jar ${RANGER_HOME}/ews/lib/
+
+
 WORKDIR /opt
 
 RUN apt-get -q update && apt-get install -y -q python gcc \

@@ -1,0 +1,10 @@
+<configuration>
+  <property>
+    <name>ranger.plugin.druid.policy.rest.url</name>
+    <value>http://ranger-admin:6080</value>
+  </property>
+  <property>
+    <name>ranger.service.name</name>
+    <value>druid-pov</value>
+  </property>
+</configuration>

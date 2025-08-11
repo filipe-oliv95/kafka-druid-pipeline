@@ -27,7 +27,7 @@ DRUID_SINGLE_NODE_CONF=micro-quickstart
 
 druid_emitter_logging_logLevel=debug
 
-druid_extensions_loadList=["druid-histogram", "druid-datasketches", "druid-lookups-cached-global", "postgresql-metadata-storage", "druid-multi-stage-query", "druid-kafka-indexing-service"]
+druid_extensions_loadList=["druid-histogram", "druid-datasketches", "druid-lookups-cached-global", "postgresql-metadata-storage", "druid-multi-stage-query", "druid-kafka-indexing-service","ranger-druid","druid-ranger-security","druid-basic-security"]
 
 druid_zk_service_host=zookeeper
 
@@ -49,3 +49,25 @@ druid_processing_numThreads=2
 druid_processing_numMergeBuffers=2
 
 DRUID_LOG4J=<?xml version="1.0" encoding="UTF-8" ?><Configuration status="WARN"><Appenders><Console name="Console" target="SYSTEM_OUT"><PatternLayout pattern="%d{ISO8601} %p [%t] %c - %m%n"/></Console></Appenders><Loggers><Root level="info"><AppenderRef ref="Console"/></Root><Logger name="org.apache.druid.jetty.RequestLog" additivity="false" level="DEBUG"><AppenderRef ref="Console"/></Logger></Loggers></Configuration>
+
+# Ativar autenticação
+druid.auth.authenticatorChain=["ranger"]
+druid.auth.authorizers=["ranger"]
+
+# Configurações do Ranger
+druid.auth.ranger.type=ranger
+druid.auth.ranger.ranger.service=druid
+druid.auth.ranger.ranger.use_ugi=false
+druid.auth.ranger.ranger.policy.rest.url=http://ranger-admin:6080
+druid.auth.ranger.ranger.policy.pollIntervalMs=30000
+druid.authority.authorizerName=ranger-authorizer
+druid.auth.authenticatorChain=["ranger-authenticator"]
+druid.auth.authenticator.ranger-authenticator.type=ranger
+druid.auth.authenticator.ranger-authenticator.name=ranger-authenticator
+druid.auth.authenticator.ranger-authenticator.authorizerName=ranger-authorizer
+druid.auth.authorizer.ranger-authorizer.type=ranger
+druid.auth.authorizer.ranger-authorizer.name=ranger-authorizer
+
+druid.startup.logging.logProperties=true
+druid.hadoop.configuration.resources=/opt/druid/hadoop-dependencies/*
+druid.extensions.hadoopDependenciesDir=/opt/druid/hadoop-dependencies
