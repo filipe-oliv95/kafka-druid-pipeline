@@ -193,8 +193,6 @@ kafka-topics --bootstrap-server localhost:9092 --list
 
 #### Consumindo Tópicos no Druid
 
-# Consumindo Tópicos no Druid
-
 1. **Acesse a interface do Druid**
 
       Abra o navegador e vá até o console do Druid:  
@@ -311,6 +309,16 @@ kafka-topics --bootstrap-server localhost:9092 --list
       - Visualizar os dados diretamente na interface do Druid.
       - Utilizar a aba **Query** para executar comandos SQL.
       - Acessar o datasource via API utilizando a [SQL API do Druid](https://druid.apache.org/docs/latest/api-reference/sql-api).
+---
+
+#### Ingestão Automática de Dados
+
+O **Automatic Data Ingestion** é um script Python leve que simula a inserção de dados realistas e em tempo real em duas tabelas PostgreSQL: uma para registros imobiliários (`cadastro_mobiliario`) e outra para dados geoespaciais de lotes (`lotes`).
+
+A execução ocorre a cada 10 minutos via `cron`, inserindo 5 novos registros em cada tabela.
+
+> 📄 [Veja o guia de uso e configuração no README do Data Inserter](./automatic_data_ingestion/README.md)
+
 ---
 
 #### Interface Ranger
