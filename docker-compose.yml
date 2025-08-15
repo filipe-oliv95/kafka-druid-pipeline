@@ -2,68 +2,16 @@ version: "2.2"
 
 volumes:
   metadata_data: {}
-  middle_var: {}
-  historical_var: {}
-  broker_var: {}
-  coordinator_var: {}
-  router_var: {}
-  druid_shared: {}
 
 services:
-  postgres:
-    container_name: postgres
-    image: postgres:15
-    ports:
-      - "5432:5432"
-    volumes:
-      - metadata_data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_PASSWORD=FoolishPassword
-      - POSTGRES_USER=druid
-      - POSTGRES_DB=druid
-    command: >
-      postgres
-      -c wal_level=logical
-      -c max_replication_slots=10
-      -c max_wal_senders=10
-
-  # Need 3.5 or later for container nodes
-  zookeeper:
-    image: confluentinc/cp-zookeeper:6.1.1
-    container_name: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-      ZOO_MY_ID: 1
-    ports:
-      - "2181:2181"
-
-  kafka:
-    image: confluentinc/cp-kafka:6.1.1
-    container_name: kafka
-    depends_on:
-      - zookeeper
-    ports:
-      - "29092:29092"
-      - "29093:29093"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092,PLAINTEXT_EXT://${EXT_IP:-localhost}:29093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_EXT:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-
   debezium:
     image: debezium/connect:2.7.0.Final
     container_name: debezium
-    depends_on:
-      - kafka
-      - postgres
     ports:
-      - "8085:8083"
+      - "8085:8083" # exposto na porta 8085
     environment:
-      BOOTSTRAP_SERVERS: kafka:9092
+      # BOOTSTRAP_SERVERS: sandbox-tdp23.tecnisys.com.br:8079 # endereço do kafka
+      BOOTSTRAP_SERVERS: 192.168.122.220:8079 # endereço do kafka
       GROUP_ID: 1
       CONFIG_STORAGE_TOPIC: debezium_config
       OFFSET_STORAGE_TOPIC: debezium_offset
@@ -73,129 +21,3 @@ services:
       CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_PLUGIN_PATH: /kafka/connect
-      POSTGRES_USER: druid
-      POSTGRES_PASSWORD: FoolishPassword
-      POSTGRES_DB: druid
-      POSTGRES_HOST_AUTH_METHOD: trust
-      POSTGRES_INITDB_ARGS: --wal-level=logical
-
-  coordinator:
-    image: apache/druid:30.0.0
-    container_name: coordinator
-    volumes:
-      - druid_shared:/opt/shared
-      - coordinator_var:/opt/druid/var
-    depends_on:
-      - zookeeper
-      - postgres
-    ports:
-      - "8081:8081"
-    command:
-      - coordinator
-    env_file:
-      - environment
-
-  broker:
-    image: apache/druid:30.0.0
-    container_name: broker
-    volumes:
-      - broker_var:/opt/druid/var
-    depends_on:
-      - zookeeper
-      - postgres
-      - coordinator
-    ports:
-      - "8082:8082"
-    command:
-      - broker
-    env_file:
-      - environment
-
-  historical:
-    image: apache/druid:30.0.0
-    container_name: historical
-    volumes:
-      - druid_shared:/opt/shared
-      - historical_var:/opt/druid/var
-    depends_on: 
-      - zookeeper
-      - postgres
-      - coordinator
-    ports:
-      - "8083:8083"
-    command:
-      - historical
-    env_file:
-      - environment
-
-  middlemanager:
-    image: apache/druid:30.0.0
-    container_name: middlemanager
-    volumes:
-      - druid_shared:/opt/shared
-      - middle_var:/opt/druid/var
-    depends_on: 
-      - zookeeper
-      - postgres
-      - coordinator
-    ports:
-      - "8091:8091"
-      - "8100-8105:8100-8105"
-    command:
-      - middleManager
-    env_file:
-      - environment
-
-  router:
-    image: apache/druid:30.0.0
-    container_name: router
-    volumes:
-      - router_var:/opt/druid/var
-    depends_on:
-      - zookeeper
-      - postgres
-      - coordinator
-    ports:
-      - "8888:8888"
-    command:
-      - router
-    env_file:
-      - environment
-
-  ranger-admin:
-    image: ghcr.io/takezoe/ranger-docker/ranger-admin:v2.4.0
-    # build:
-    #   context: ./ranger-admin
-    #   dockerfile: Dockerfile
-    container_name: ranger-admin
-    ports:
-      - 6080:6080
-    depends_on:
-      - ranger-mysql
-      - ranger-solr
-
-  ranger-mysql:
-    image: mysql:8.0.33
-    container_name: ranger-mysql
-    ports:
-      - 3306:3306
-    volumes:
-      - ./ranger-mysql:/etc/mysql/conf.d
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_USER: rangeradmin
-      MYSQL_PASSWORD: rangeradmin
-      MYSQL_DATABASE: ranger
-
-  ranger-solr:
-    image: solr:8.11.2
-    container_name: ranger-solr
-    ports:
-      - 8983:8983
-    volumes:
-      - ./ranger-solr:/opt/solr/server/solr/configsets/ranger_audits/conf
-    entrypoint:
-      - solr-precreate
-      - ranger_audits
-      - /opt/solr/server/solr/configsets/ranger_audits
-    
